@@ -9,7 +9,7 @@ import (
 // Record defines the generic map[string]interface{}
 type Record map[string]interface{}
 
-// Exists checks the existence of the key.
+// Exists checks the existence of the key
 func (r Record) Exists(key string) bool {
 	_, ok := r[key]
 	return ok
