@@ -1,12 +1,14 @@
 # golib
 ## commandLine
 ## converter
+## encoding
 ## keyvalue
 ### To Publish a new version
 you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
 
     git tag -a commandLine/v1.0.0 -m "Release 1.0.0
     git tag -a converter/v1.0.0 -m "Release 1.0.0
+    git tag -a encoding/v1.0.0 -m "Release 1.0.0
     git tag -a keyvalue/v1.0.0 -m "Release 1.0.0
     git push --tags
 
