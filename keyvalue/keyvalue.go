@@ -9,6 +9,10 @@ import (
 // Record defines the generic map[string]interface{}
 type Record map[string]interface{}
 
+func NewRecord() Record {
+	return make(Record)
+}
+
 // Exists checks the existence of the key
 func (r Record) Exists(key string) bool {
 	_, ok := r[key]
@@ -171,4 +175,17 @@ func (r Record) String(key string, convert ...bool) string {
 		return s
 	}
 	return ""
+}
+
+// Copy makes a copy of the record
+// RESTRICTIONS: if the value is a pointer (maps or structs) only the reference is copied, not the content!
+func (r Record) Copy() Record {
+	// a map is a pointer  so maps must be copied
+
+	record := make(Record)
+	for k, v := range r {
+		record[k] = v
+	}
+
+	return record
 }
