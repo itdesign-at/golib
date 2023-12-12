@@ -8,6 +8,45 @@ import (
 	"testing"
 )
 
+func Test_Params(t *testing.T) {
+
+	var expectMap = map[string]string{
+		"xxwrong":                    "STDERR;yes",
+		"":                           "STDERR;yes",
+		"STDERR":                     "STDERR;yes",
+		"/var/log/myLog.log":         "file;/var/log/myLog.log",
+		"nats://server.demo.at:4222": "nats;nats://server.demo.at:4222",
+	}
+
+	for k, v := range expectMap {
+		l := New(k)
+		left, right, _ := strings.Cut(v, ";")
+		if len(l.myConfig) == 1 && l.myConfig[left] == right {
+			t.Logf("OK sent %q and got %q:%q", k, left, right)
+		} else {
+			t.Errorf("wrong param sent %q and got %q:%q", k, left, right)
+		}
+		asSlice := []string{k}
+		l = New(asSlice)
+		if len(l.myConfig) == 1 && l.myConfig[left] == right {
+			t.Logf("OK sent []string{%q} and got %q:%q", k, left, right)
+		} else {
+			t.Errorf("wrong param sent %q and got %q:%q", k, left, right)
+		}
+	}
+
+	l := New("STDERR,/var/log/myLog.log,nats://server.demo.at:4222")
+	if len(l.myConfig) != 3 {
+		t.Errorf("wrong params")
+	}
+
+	l = New([]string{"STDERR", "/var/log/myLog.log", "nats://server.demo.at:4222"})
+	if len(l.myConfig) != 3 {
+		t.Errorf("wrong params")
+	}
+
+}
+
 func Test_StderrLogging(t *testing.T) {
 	New(nil)
 	child := slog.With(

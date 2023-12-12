@@ -15,6 +15,8 @@ import (
 )
 
 type SlogLogger struct {
+	myConfig map[string]string
+
 	w             io.Writer
 	natsHandler   *nats.Conn
 	fileHandler   *os.File
@@ -22,29 +24,59 @@ type SlogLogger struct {
 	message       chan []byte
 }
 
-// New takes a config map with its parameters to start
-// Example:
+// New takes a config string or slice with its parameters
+// to init slog logging in json format.
 //
-//	structuredLogging.New(map[string]any{
-//	    "nats":   "nats://127.0.0.1:4222",
-//	    "file":   "/tmp/do-log.log",
-//	    "STDERR": true,
-//	})
+// Examples:
+//
+//	structuredLogging.New("STDERR")
+//	structuredLogging.New("/var/log/myLogfile.log")
+//	structuredLogging.New("nats://server1.demo.at:4222/subject.prefix")
+//
+//	structuredLogging.New("STDERR,file:/var/log/myLogFile.log")
+//
+//	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"})
 //
 // In its simplest form structuredLogging.New(nil) logs to STDERR
-func New(config map[string]any) *SlogLogger {
+func New(config any) *SlogLogger {
 	var sl SlogLogger
 
-	if config == nil {
-		config = map[string]any{"STDERR": true}
+	sl.myConfig = make(map[string]string)
+
+	var fillMyConfig = func(x string) {
+		if strings.HasPrefix(x, "/") {
+			sl.myConfig["file"] = x
+		} else if strings.HasPrefix(x, "nats://") {
+			sl.myConfig["nats"] = x
+		} else {
+			sl.myConfig["STDERR"] = "yes"
+		}
 	}
+
+	switch x := config.(type) {
+	case string:
+		if strings.Contains(x, ",") {
+			for _, str := range strings.Split(x, ",") {
+				fillMyConfig(str)
+			}
+		} else {
+			fillMyConfig(x)
+		}
+	case []string:
+		for _, str := range x {
+			fillMyConfig(str)
+		}
+	case nil:
+		fillMyConfig("STDERR")
+	}
+
 	opt := &slog.HandlerOptions{
 		AddSource:   false,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: nil,
 	}
 
-	if n, ok := config["nats"].(string); ok && n != "" {
+	if n, ok := sl.myConfig["nats"]; ok && n != "" {
 		// nats reconnect documentation see
 		// https://docs.nats.io/using-nats/developer/connecting/reconnect
 		sl.natsHandler, _ = nats.Connect(
@@ -53,10 +85,10 @@ func New(config map[string]any) *SlogLogger {
 			nats.MaxReconnects(math.MaxInt),
 		)
 	}
-	if f, ok := config["file"].(string); ok && f != "" {
+	if f, ok := sl.myConfig["file"]; ok && f != "" {
 		sl.fileHandler, _ = os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	}
-	if b, ok := config["STDERR"].(bool); ok && b {
+	if _, ok := sl.myConfig["STDERR"]; ok {
 		sl.stderrHandler = os.Stderr
 	}
 
