@@ -14,6 +14,14 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+/**
+
+TODO: Initialize() Methode
+im Writer ein open und close
+jeder handler in einer go routine und mit wait warten (waitgroups)
+
+*/
+
 type SlogLogger struct {
 	myConfig map[string]string
 
