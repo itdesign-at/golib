@@ -2,34 +2,23 @@ package structuredLogging
 
 import (
 	"encoding/json"
-	"io"
 	"log/slog"
 	"math"
 	"os"
 	"os/user"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
 )
 
-/**
-
-TODO: Initialize() Methode
-im Writer ein open und close
-jeder handler in einer go routine und mit wait warten (waitgroups)
-
-*/
+// TODO: Initialize() Methode
+// TODO: Kommentare fehlen noch!
 
 type SlogLogger struct {
-	myConfig map[string]string
-
-	w             io.Writer
-	natsHandler   *nats.Conn
-	fileHandler   *os.File
-	stderrHandler *os.File
-	message       chan []byte
+	writers map[string]func(string, []byte)
 }
 
 // New takes a config string or slice with its parameters
@@ -40,41 +29,43 @@ type SlogLogger struct {
 //	structuredLogging.New("STDERR")
 //	structuredLogging.New("/var/log/myLogfile.log")
 //	structuredLogging.New("nats://server1.demo.at:4222/subject.prefix")
+//	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"}...)
+//	structuredLogging.New("STDERR","/var/log/myLogFile.log","/var/log/anotherLogFile.log")
+//	structuredLogging.New("STDERR","/var/log/myLogFile.log")
+//	structuredLogging.New()
 //
-//	structuredLogging.New("STDERR,file:/var/log/myLogFile.log")
-//
-//	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"})
-//
-// In its simplest form structuredLogging.New(nil) logs to STDERR
-func New(config any) *SlogLogger {
-	var sl SlogLogger
-
-	sl.myConfig = make(map[string]string)
+// In its simplest form structuredLogging.New() logs to STDERR
+func New(dsn ...string) *SlogLogger {
+	sl := SlogLogger{
+		writers: make(map[string]func(string, []byte)),
+	}
 
 	var fillMyConfig = func(x string) {
 		if strings.HasPrefix(x, "/") {
-			sl.myConfig["file"] = x
+			// it's a file
+			sl.writers[x] = writeFile
 		} else if strings.HasPrefix(x, "nats://") {
-			sl.myConfig["nats"] = x
+			// it's nats
+			sl.writers[x] = writeNats
 		} else {
-			sl.myConfig["STDERR"] = "yes"
+			// whatever, definitely stderr
+			sl.writers["STDERR"] = writeStdErr
 		}
 	}
 
-	switch x := config.(type) {
-	case string:
-		if strings.Contains(x, ",") {
-			for _, str := range strings.Split(x, ",") {
+	for _, d := range dsn {
+		if strings.Contains(d, ",") {
+			// additional to slices, comma seperated strings are supported
+			for _, str := range strings.Split(d, ",") {
 				fillMyConfig(str)
 			}
 		} else {
-			fillMyConfig(x)
+			fillMyConfig(d)
 		}
-	case []string:
-		for _, str := range x {
-			fillMyConfig(str)
-		}
-	case nil:
+	}
+
+	// if no writer is defined, it is ensured that logging occurs on stderr
+	if len(sl.writers) == 0 {
 		fillMyConfig("STDERR")
 	}
 
@@ -82,22 +73,6 @@ func New(config any) *SlogLogger {
 		AddSource:   false,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: nil,
-	}
-
-	if n, ok := sl.myConfig["nats"]; ok && n != "" {
-		// nats reconnect documentation see
-		// https://docs.nats.io/using-nats/developer/connecting/reconnect
-		sl.natsHandler, _ = nats.Connect(
-			n,
-			nats.RetryOnFailedConnect(true),
-			nats.MaxReconnects(math.MaxInt),
-		)
-	}
-	if f, ok := sl.myConfig["file"]; ok && f != "" {
-		sl.fileHandler, _ = os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	}
-	if _, ok := sl.myConfig["STDERR"]; ok {
-		sl.stderrHandler = os.Stderr
 	}
 
 	jh := slog.NewJSONHandler(sl, opt)
@@ -144,24 +119,46 @@ func GenerateLogfileName(layout string) string {
 
 // Write to all configured log handlers
 func (sl SlogLogger) Write(p []byte) (int, error) {
-	var data = make([]byte, len(p))
-	copy(data, p)
-	if sl.natsHandler != nil {
+	var wg sync.WaitGroup
+
+	for dsn, f := range sl.writers {
+		wg.Add(1)
+
+		go func(f func(string, []byte), dsn string, p []byte) {
+			f(dsn, p)
+			wg.Done()
+		}(f, dsn, p)
+	}
+
+	wg.Wait()
+	return len(p), nil
+}
+
+// nats reconnect documentation see
+// https://docs.nats.io/using-nats/developer/connecting/reconnect
+func writeNats(dsn string, b []byte) {
+	if conn, err := nats.Connect(dsn, nats.RetryOnFailedConnect(true), nats.MaxReconnects(math.MaxInt)); err == nil {
 		var subject string
 		var x map[string]any
-		_ = json.Unmarshal(data, &x)
+
+		_ = json.Unmarshal(b, &x)
 		if level, ok := x["level"].(string); ok {
 			subject = "slog." + level
 		} else {
 			subject = "slog.UNKNOWN"
 		}
-		_ = sl.natsHandler.Publish(subject, data)
+		_ = conn.Publish(subject, b)
+		conn.Close()
 	}
-	if sl.fileHandler != nil {
-		_, _ = sl.fileHandler.Write(data)
+}
+
+func writeFile(f string, b []byte) {
+	if file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		_, _ = file.Write(b)
+		_ = file.Close()
 	}
-	if sl.stderrHandler != nil {
-		_, _ = sl.stderrHandler.Write(data)
-	}
-	return len(p), nil
+}
+
+func writeStdErr(f string, b []byte) {
+	_, _ = os.Stderr.Write(b)
 }
