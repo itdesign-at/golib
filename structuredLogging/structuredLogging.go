@@ -14,59 +14,56 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// TODO: Initialize() Methode
-// TODO: Kommentare fehlen noch!
-
 type SlogLogger struct {
+	// writers holds all configured writer functions
 	writers map[string]func(string, []byte)
 }
 
-// New takes a config string or slice with its parameters
+// New creates a writer slog
+// In its simplest form structuredLogging.New().Init() logs to STDERR
+func New() *SlogLogger {
+	return &SlogLogger{
+		writers: make(map[string]func(string, []byte)),
+	}
+}
+
+// Init takes a config string or slice with its parameters
 // to init slog logging in json format.
 //
 // Examples:
 //
-//	structuredLogging.New("STDERR")
-//	structuredLogging.New("/var/log/myLogfile.log")
-//	structuredLogging.New("nats://server1.demo.at:4222/subject.prefix")
-//	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"}...)
-//	structuredLogging.New("STDERR","/var/log/myLogFile.log","/var/log/anotherLogFile.log")
-//	structuredLogging.New("STDERR","/var/log/myLogFile.log")
-//	structuredLogging.New()
+//	structuredLogging.New().Init("STDERR")
+//	structuredLogging.New().Init("/var/log/myLogfile.log")
+//	structuredLogging.New().Init("nats://server1.demo.at:4222/subject.prefix")
+//	structuredLogging.New().Init([]string{"STDERR","/var/log/myLogFile.log"}...)
+//	structuredLogging.New().Init("STDERR","/var/log/myLogFile.log","/var/log/anotherLogFile.log")
+//	structuredLogging.New().Init("STDERR","/var/log/myLogFile.log")
+//	structuredLogging.New().Init()
 //
-// In its simplest form structuredLogging.New() logs to STDERR
-func New(dsn ...string) *SlogLogger {
-	sl := SlogLogger{
-		writers: make(map[string]func(string, []byte)),
-	}
-
-	var fillMyConfig = func(x string) {
-		if strings.HasPrefix(x, "/") {
-			// it's a file
-			sl.writers[x] = writeFile
-		} else if strings.HasPrefix(x, "nats://") {
-			// it's nats
-			sl.writers[x] = writeNats
-		} else {
-			// whatever, definitely stderr
-			sl.writers["STDERR"] = writeStdErr
-		}
-	}
+// In its simplest form structuredLogging.New().Init() logs to STDERR
+func (sl *SlogLogger) Init(dsn ...string) *SlogLogger {
+	sl.writers = make(map[string]func(string, []byte))
 
 	for _, d := range dsn {
-		if strings.Contains(d, ",") {
-			// additional to slices, comma seperated strings are supported
-			for _, str := range strings.Split(d, ",") {
-				fillMyConfig(str)
+		// additional to slices, comma seperated strings are supported
+		for _, str := range strings.Split(d, ",") {
+			switch {
+			case strings.HasPrefix(str, "/"):
+				// it's a file
+				sl.writers[str] = writeFile
+			case strings.HasPrefix(str, "nats://"):
+				// it's nats
+				sl.writers[str] = writeNats
+			default:
+				// whatever, definitely stderr
+				sl.writers["STDERR"] = writeStdErr
 			}
-		} else {
-			fillMyConfig(d)
 		}
 	}
 
 	// if no writer is defined, it is ensured that logging occurs on stderr
 	if len(sl.writers) == 0 {
-		fillMyConfig("STDERR")
+		sl.writers["STDERR"] = writeStdErr
 	}
 
 	opt := &slog.HandlerOptions{
@@ -79,7 +76,7 @@ func New(dsn ...string) *SlogLogger {
 	logger := slog.New(jh)
 	slog.SetDefault(logger)
 
-	return &sl
+	return sl
 }
 
 // GenerateLogfileName generates a filename with a golang
@@ -95,10 +92,9 @@ func New(dsn ...string) *SlogLogger {
 //	/var/log/messenger-root-2023-12.log
 func GenerateLogfileName(layout string) string {
 	var str string
-
 	var username string
-	u, err := user.Current()
-	if err == nil {
+
+	if u, err := user.Current(); err == nil {
 		username = u.Username
 		if username == "" {
 			username = u.Name
@@ -117,8 +113,8 @@ func GenerateLogfileName(layout string) string {
 	return str
 }
 
-// Write to all configured log handlers
-func (sl SlogLogger) Write(p []byte) (int, error) {
+// Write to all configured log functions (sl.writers)
+func (sl *SlogLogger) Write(p []byte) (int, error) {
 	var wg sync.WaitGroup
 
 	for dsn, f := range sl.writers {
@@ -134,6 +130,8 @@ func (sl SlogLogger) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// writeNats write buffer b to nats server (parameter dsn)
+// the subject is extract from key "level" of the json message (buffer b)
 // nats reconnect documentation see
 // https://docs.nats.io/using-nats/developer/connecting/reconnect
 func writeNats(dsn string, b []byte) {
@@ -152,6 +150,7 @@ func writeNats(dsn string, b []byte) {
 	}
 }
 
+// writeFile write buffer b to file f
 func writeFile(f string, b []byte) {
 	if file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		_, _ = file.Write(b)
@@ -159,6 +158,8 @@ func writeFile(f string, b []byte) {
 	}
 }
 
+// writeStdErr write buffer b to os.Stderr
 func writeStdErr(f string, b []byte) {
 	_, _ = os.Stderr.Write(b)
+	// NEVER close os.Stderr, see package os
 }
