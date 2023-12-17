@@ -367,3 +367,31 @@ func Test_Exists(t *testing.T) {
 		}
 	}
 }
+
+func TestRecord_GetSortedKeys(t *testing.T) {
+	testRecord := Record{
+		"9":   1,
+		"a":   1,
+		"123": 1,
+		"+":   1,
+	}
+
+	expectedRecord := []string{"+", "123", "9", "a"}
+	keys := testRecord.GetSortedKeys()
+
+	if l := len(keys); l != len(expectedRecord) {
+		t.Errorf("unexpected len of result: got: %q, expected: %q", l, len(expectedRecord))
+	}
+
+	for n, key := range keys {
+		if e := expectedRecord[n]; key != e {
+			t.Errorf("key got: %q, expected: %q", key, e)
+
+		}
+	}
+
+	if l := len(Record{}.GetSortedKeys()); l != 0 {
+		t.Errorf("unexpected len of result: got: %q, expected: %q", l, 0)
+
+	}
+}

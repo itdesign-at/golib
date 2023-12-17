@@ -2,6 +2,7 @@ package keyvalue
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -188,4 +189,17 @@ func (r Record) Copy() Record {
 	}
 
 	return record
+}
+
+// GetSortedKeys returns the sorted keys as a slice
+func (r Record) GetSortedKeys() []string {
+	keys := make([]string, len(r))
+	var n int
+	for k := range r {
+		keys[n] = k
+		n++
+	}
+
+	sort.Strings(keys)
+	return keys
 }
