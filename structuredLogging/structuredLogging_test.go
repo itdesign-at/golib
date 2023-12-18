@@ -28,23 +28,22 @@ func Test_Params(t *testing.T) {
 		},
 	}
 
-	sl := New()
 	for param, expect := range expectMap {
-		l := sl.Init(param)
+		sl := New(param).Init()
 
 		if len(sl.writers) != len(expect) {
 			t.Errorf("test %q got wrong numbers of writers  %q (expected: %q)", param, len(sl.writers), len(expect))
 		}
 
 		for k, v := range expect {
-			if f, ok := l.writers[k]; ok && reflect.ValueOf(f).Pointer() == v {
+			if f, ok := sl.writers[k]; ok && reflect.ValueOf(f).Pointer() == v {
 				t.Logf("OK param %q got writer %v", k, v)
 			} else {
 				t.Errorf("FAILED param %q doesn't get writer %v", param, v)
 			}
 		}
 
-		for k, f := range l.writers {
+		for k, f := range sl.writers {
 			if _, ok := expect[k]; !ok {
 				t.Errorf("FAILED param %q get wrong writer %v", param, reflect.ValueOf(f).Pointer())
 			}
@@ -52,37 +51,44 @@ func Test_Params(t *testing.T) {
 	}
 
 	param := []string{"STDERR", "/var/log/myLog.log", "nats://server.demo.at:4222"}
-	l := sl.Init(param...)
-	if len(l.writers) != 3 {
-		t.Errorf("FAILED param %q got wrong numbers of writers %q (expected: %q)", param, len(l.writers), 3)
+	sl := New(param...).Init()
+	if len(sl.writers) != 3 {
+		t.Errorf("FAILED param %q got wrong numbers of writers %q (expected: %q)", param, len(sl.writers), 3)
 	}
 
-	l = sl.Init("STDERR", "/var/log/myLog.log", "nats://server.demo.at:4222")
-	if len(l.writers) != 3 {
+	sl = New("STDERR", "/var/log/myLog.log", "nats://server.demo.at:4222").Init()
+	if len(sl.writers) != 3 {
 		t.Errorf(
 			"FAILED param \"STDERR\", "+
 				"\"/var/log/myLog.log\", "+
 				"\"nats://server.demo.at:4222\": "+
-				"got wrong numbers of writers %q (expected: %q)", len(l.writers), 3)
+				"got wrong numbers of writers %q (expected: %q)", len(sl.writers), 3)
 	}
 
-	l = sl.Init()
-	if len(l.writers) == 1 && reflect.ValueOf(l.writers["STDERR"]).Pointer() == funcWriteStdErr {
+	sl = New().Init()
+	if len(sl.writers) == 1 && reflect.ValueOf(sl.writers["STDERR"]).Pointer() == funcWriteStdErr {
 		t.Logf("OK param %q got StdErr writer", "")
 	} else {
 		t.Errorf("FAILED  param %q doesn't get stdErr writer", "")
 	}
 
 	var x []string
-	l = sl.Init(x...)
-	if len(l.writers) == 1 && reflect.ValueOf(l.writers["STDERR"]).Pointer() == funcWriteStdErr {
+	sl = New(x...).Init()
+	if len(sl.writers) == 1 && reflect.ValueOf(sl.writers["STDERR"]).Pointer() == funcWriteStdErr {
 		t.Logf("OK param %q got StdErr writer", x)
 	} else {
 		t.Errorf("FAILED  param %q doesn't get stdErr writer", x)
 	}
 
-	l = sl.Init(nil...)
-	if len(l.writers) == 1 && reflect.ValueOf(l.writers["STDERR"]).Pointer() == funcWriteStdErr {
+	sl = New(nil...).Init()
+	if len(sl.writers) == 1 && reflect.ValueOf(sl.writers["STDERR"]).Pointer() == funcWriteStdErr {
+		t.Logf("OK param %q got StdErr writer", "nil")
+	} else {
+		t.Errorf("FAILED  param %q doesn't get stdErr writer", "nil")
+	}
+
+	sl = New().Init()
+	if len(sl.writers) == 1 && reflect.ValueOf(sl.writers["STDERR"]).Pointer() == funcWriteStdErr {
 		t.Logf("OK param %q got StdErr writer", "nil")
 	} else {
 		t.Errorf("FAILED  param %q doesn't get stdErr writer", "nil")
@@ -103,7 +109,7 @@ func Test_StderrLogging(t *testing.T) {
 
 func Test_AllChannels(t *testing.T) {
 	//	sl := New().Init("nats://127.0.0.1:4222", "/tmp/do-log.log", "STDERR")
-	sl := New().Init("nats://127.0.0.1:4222")
+	sl := New("nats://127.0.0.1:4222").Init()
 	_ = sl //only for debugging
 
 	log.Println("Hallo World")

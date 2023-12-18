@@ -20,29 +20,20 @@ type SlogLogger struct {
 }
 
 // New creates a writer slog
-// In its simplest form structuredLogging.New().Init() logs to STDERR
-func New() *SlogLogger {
-	return &SlogLogger{
-		writers: make(map[string]func(string, []byte)),
-	}
-}
-
-// Init takes a config string or slice with its parameters
-// to init slog logging in json format.
-//
 // Examples:
 //
-//	structuredLogging.New().Init("STDERR")
-//	structuredLogging.New().Init("/var/log/myLogfile.log")
-//	structuredLogging.New().Init("nats://server1.demo.at:4222/subject.prefix")
-//	structuredLogging.New().Init([]string{"STDERR","/var/log/myLogFile.log"}...)
-//	structuredLogging.New().Init("STDERR","/var/log/myLogFile.log","/var/log/anotherLogFile.log")
-//	structuredLogging.New().Init("STDERR","/var/log/myLogFile.log")
-//	structuredLogging.New().Init()
+//	structuredLogging.New("STDERR")
+//	structuredLogging.New("/var/log/myLogfile.log")
+//	structuredLogging.New("nats://server1.demo.at:4222/subject.prefix")
+//	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"}...)
+//	structuredLogging.New("STDERR","/var/log/myLogFile.log","/var/log/anotherLogFile.log")
+//	structuredLogging.New("STDERR","/var/log/myLogFile.log")
 //
 // In its simplest form structuredLogging.New().Init() logs to STDERR
-func (sl *SlogLogger) Init(dsn ...string) *SlogLogger {
-	sl.writers = make(map[string]func(string, []byte))
+func New(dsn ...string) *SlogLogger {
+	var sl = SlogLogger{
+		writers: make(map[string]func(string, []byte)),
+	}
 
 	for _, d := range dsn {
 		// additional to slices, comma seperated strings are supported
@@ -60,6 +51,20 @@ func (sl *SlogLogger) Init(dsn ...string) *SlogLogger {
 			}
 		}
 	}
+
+	return &sl
+}
+
+// Parameter sets structuredLogging parameters
+// under construction: currently no function implemented, reserved fpr future use
+func (sl *SlogLogger) Parameter(params ...string) *SlogLogger {
+
+	return sl
+}
+
+// Init initialize the logger
+// In its simplest form structuredLogging.New().Init() logs to STDERR
+func (sl *SlogLogger) Init() *SlogLogger {
 
 	// if no writer is defined, it is ensured that logging occurs on stderr
 	if len(sl.writers) == 0 {
