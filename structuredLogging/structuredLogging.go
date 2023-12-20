@@ -26,6 +26,7 @@ type SlogLogger struct {
 // Examples:
 //
 //	structuredLogging.New("STDERR")
+//	structuredLogging.New("STDOUT")
 //	structuredLogging.New("/var/log/myLogfile.log")
 //	structuredLogging.New("nats://server1.demo.at:4222/subject.prefix")
 //	structuredLogging.New([]string{"STDERR","/var/log/myLogFile.log"}...)
@@ -48,6 +49,9 @@ func New(dsn ...string) *SlogLogger {
 			case strings.HasPrefix(str, "nats://"):
 				// it's nats
 				sl.writers[str] = sl.writeNats
+			case strings.ToUpper(str) == "STDOUT":
+				// whatever, definitely stderr
+				sl.writers["STDOUT"] = sl.writeStdOut
 			default:
 				// whatever, definitely stderr
 				sl.writers["STDERR"] = sl.writeStdErr
@@ -196,4 +200,10 @@ func (sl *SlogLogger) writeFile(f string, b []byte) {
 func (sl *SlogLogger) writeStdErr(f string, b []byte) {
 	_, _ = os.Stderr.Write(b)
 	// NEVER close os.Stderr, see package os
+}
+
+// writeStdErr write buffer b to os.Stdout
+func (sl *SlogLogger) writeStdOut(f string, b []byte) {
+	_, _ = os.Stdout.Write(b)
+	// NEVER close os.Stdout, see package os
 }

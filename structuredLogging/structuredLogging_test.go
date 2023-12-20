@@ -1,6 +1,7 @@
 package structuredLogging
 
 import (
+	"github.com/itdesign-at/golib/keyvalue"
 	"log"
 	"log/slog"
 	"os"
@@ -131,6 +132,17 @@ func Test_AllChannels(t *testing.T) {
 	slog.Debug("this is my first debug entry")
 }
 
+func Test_Levels(t *testing.T) {
+	sl := New("STDERR").Parameter(keyvalue.Record{"Level": "error"}).Init()
+	_ = sl //only for debugging
+
+	log.Println("log.Println() is a info entry")
+	slog.Info("this is my first info entry")
+	slog.Warn("this is my first warning entry")
+	slog.Error("this is my first error entry")
+	slog.Debug("this is my first debug entry")
+}
+
 func TestGenerateLogfileName(t *testing.T) {
 	fileName := GenerateLogfileName("/var/log/messenger-user.Current-2006-01.log")
 	if strings.Contains(fileName, "user.Current") {
@@ -139,4 +151,15 @@ func TestGenerateLogfileName(t *testing.T) {
 	if strings.Contains(fileName, "2006") {
 		t.Errorf("wrong filename %q", fileName)
 	}
+}
+
+func Test_StdOut(t *testing.T) {
+	sl := New("StdOut").Init()
+	_ = sl //only for debugging
+
+	log.Println("log.Println() is a info entry")
+	slog.Info("this is my first info entry")
+	slog.Warn("this is my first warning entry")
+	slog.Error("this is my first error entry")
+	slog.Debug("this is my first debug entry")
 }
