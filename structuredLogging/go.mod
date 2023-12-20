@@ -2,7 +2,10 @@ module github.com/itdesign-at/golib/structuredLogging
 
 go 1.21
 
-require github.com/nats-io/nats.go v1.31.0
+require (
+	github.com/itdesign-at/golib/keyvalue v1.0.2
+	github.com/nats-io/nats.go v1.31.0
+)
 
 require (
 	github.com/klauspost/compress v1.17.0 // indirect

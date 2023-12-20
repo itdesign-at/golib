@@ -12,11 +12,14 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+
+	"github.com/itdesign-at/golib/keyvalue"
 )
 
 type SlogLogger struct {
 	// writers holds all configured writer functions
 	writers map[string]func(string, []byte)
+	params  keyvalue.Record
 }
 
 // New creates a writer slog
@@ -41,13 +44,13 @@ func New(dsn ...string) *SlogLogger {
 			switch {
 			case strings.HasPrefix(str, "/"):
 				// it's a file
-				sl.writers[str] = writeFile
+				sl.writers[str] = sl.writeFile
 			case strings.HasPrefix(str, "nats://"):
 				// it's nats
-				sl.writers[str] = writeNats
+				sl.writers[str] = sl.writeNats
 			default:
 				// whatever, definitely stderr
-				sl.writers["STDERR"] = writeStdErr
+				sl.writers["STDERR"] = sl.writeStdErr
 			}
 		}
 	}
@@ -56,9 +59,12 @@ func New(dsn ...string) *SlogLogger {
 }
 
 // Parameter sets structuredLogging parameters
-// under construction: currently no function implemented, reserved fpr future use
-func (sl *SlogLogger) Parameter(params ...string) *SlogLogger {
-
+//
+// Examples:
+//
+//	NatsSubjectPrefix ... defines the first level(s) of the nats subject, default: "slog."
+func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
+	sl.params = params
 	return sl
 }
 
@@ -68,7 +74,7 @@ func (sl *SlogLogger) Init() *SlogLogger {
 
 	// if no writer is defined, it is ensured that logging occurs on stderr
 	if len(sl.writers) == 0 {
-		sl.writers["STDERR"] = writeStdErr
+		sl.writers["STDERR"] = sl.writeStdErr
 	}
 
 	opt := &slog.HandlerOptions{
@@ -139,16 +145,20 @@ func (sl *SlogLogger) Write(p []byte) (int, error) {
 // the subject is extract from key "level" of the json message (buffer b)
 // nats reconnect documentation see
 // https://docs.nats.io/using-nats/developer/connecting/reconnect
-func writeNats(dsn string, b []byte) {
+func (sl *SlogLogger) writeNats(dsn string, b []byte) {
 	if conn, err := nats.Connect(dsn, nats.RetryOnFailedConnect(true), nats.MaxReconnects(math.MaxInt)); err == nil {
-		var subject string
 		var x map[string]any
+		var subject string
 
 		_ = json.Unmarshal(b, &x)
+		if subject = sl.params.String("NatsSubjectPrefix", true); subject == "" {
+			subject = "slog."
+		}
+
 		if level, ok := x["level"].(string); ok {
-			subject = "slog." + level
+			subject += level
 		} else {
-			subject = "slog.UNKNOWN"
+			subject += "UNKNOWN"
 		}
 		_ = conn.Publish(subject, b)
 		conn.Close()
@@ -156,7 +166,7 @@ func writeNats(dsn string, b []byte) {
 }
 
 // writeFile write buffer b to file f
-func writeFile(f string, b []byte) {
+func (sl *SlogLogger) writeFile(f string, b []byte) {
 	if file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		_, _ = file.Write(b)
 		_ = file.Close()
@@ -164,7 +174,7 @@ func writeFile(f string, b []byte) {
 }
 
 // writeStdErr write buffer b to os.Stderr
-func writeStdErr(f string, b []byte) {
+func (sl *SlogLogger) writeStdErr(f string, b []byte) {
 	_, _ = os.Stderr.Write(b)
 	// NEVER close os.Stderr, see package os
 }
