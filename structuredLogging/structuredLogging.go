@@ -62,7 +62,12 @@ func New(dsn ...string) *SlogLogger {
 //
 // Examples:
 //
-//	NatsSubjectPrefix ... defines the first level(s) of the nats subject, default: "slog."
+//		NatsSubjectPrefix ... defines the first level(s) of the nats subject, default: "slog."
+//		Level             ... defines the Log Level, default: "debug", keywords are not case sensitive
+//	                           "debug",-4,"-4"  ... debug Level
+//	                           "error",8,"8"    ... error Level
+//	                           "warning",4,"4"  ... warning Level
+//	                           "info,0,"0"      ... info Level
 func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
 	sl.params = params
 	return sl
@@ -77,9 +82,23 @@ func (sl *SlogLogger) Init() *SlogLogger {
 		sl.writers["STDERR"] = sl.writeStdErr
 	}
 
+	var level slog.Level
+	switch strings.ToLower(sl.params.String("Level", true)) {
+	case "debug", slog.LevelDebug.String():
+		level = slog.LevelDebug
+	case "error", slog.LevelError.String():
+		level = slog.LevelError
+	case "info", slog.LevelInfo.String():
+		level = slog.LevelInfo
+	case "warning", slog.LevelWarn.String():
+		level = slog.LevelWarn
+	default:
+		level = slog.LevelDebug
+	}
+
 	opt := &slog.HandlerOptions{
 		AddSource:   false,
-		Level:       slog.LevelDebug,
+		Level:       level,
 		ReplaceAttr: nil,
 	}
 
