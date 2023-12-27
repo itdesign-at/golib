@@ -3,6 +3,7 @@ package structuredLogging
 import (
 	"encoding/json"
 	"log/slog"
+	"math"
 	"os"
 	"os/user"
 	"strconv"
@@ -17,8 +18,9 @@ import (
 
 type SlogLogger struct {
 	// writers holds all configured writer functions
-	writers map[string]func(string, []byte)
-	params  keyvalue.Record
+	writers        map[string]func(string, []byte)
+	params         keyvalue.Record
+	natsConnection *nats.Conn
 }
 
 // New creates a writer slog
@@ -40,20 +42,20 @@ func New(dsn ...string) *SlogLogger {
 	}
 
 	for _, d := range dsn {
-		// additional to slices, comma seperated strings are supported
+		// comma seperated strings are supported
 		for _, str := range strings.Split(d, ",") {
 			switch {
 			case strings.HasPrefix(str, "/"):
-				// it's a file
 				sl.writers[str] = sl.writeFile
 			case strings.HasPrefix(str, "nats://"):
-				// it's nats
 				sl.writers[str] = sl.writeNats
+				// nats reconnect documentation see
+				// https://docs.nats.io/using-nats/developer/connecting/reconnect
+				sl.natsConnection, _ = nats.Connect(str, nats.RetryOnFailedConnect(true),
+					nats.MaxReconnects(math.MaxInt))
 			case strings.ToUpper(str) == "STDOUT":
-				// whatever, definitely stderr
 				sl.writers["STDOUT"] = sl.writeStdOut
 			default:
-				// whatever, definitely stderr
 				sl.writers["STDERR"] = sl.writeStdErr
 			}
 		}
@@ -127,11 +129,18 @@ func (sl *SlogLogger) Init() *SlogLogger {
 //
 // Example:
 //
-//	/var/log/messenger-user.Current-2006-01.log
+//	layout = /var/log/messenger-user.Current-2006-01.log
 //
 // returns
 //
 //	/var/log/messenger-root-2023-12.log
+//
+// With New() and Init():
+//
+//	logFilename := filepath.Join("/var/log",
+//	  structuredLogging.GenerateLogfileName("messenger-user.Current-2006-01.log")
+//	)
+//	structuredLogging.New(logFilename).Init()
 func GenerateLogfileName(layout string) string {
 	var str string
 	var username string
@@ -173,17 +182,9 @@ func (sl *SlogLogger) Write(p []byte) (int, error) {
 }
 
 // writeNats write buffer b to nats server (parameter dsn)
-// the subject is extract from key "level" of the json message (buffer b)
-// nats reconnect documentation see
-// https://docs.nats.io/using-nats/developer/connecting/reconnect
+// the subject is extracted from the "level" of the json message (buffer b).
+// To avoid json.Unmarshal a subject can be given into Parameter().
 func (sl *SlogLogger) writeNats(dsn string, b []byte) {
-
-	conn, err := nats.Connect(dsn, nats.RetryOnFailedConnect(false),
-		nats.MaxReconnects(3))
-
-	if err != nil {
-		return
-	}
 
 	var subject string
 
@@ -198,14 +199,14 @@ func (sl *SlogLogger) writeNats(dsn string, b []byte) {
 		}
 	}
 
-	_ = conn.Publish(subject, b)
-	conn.Close()
+	_ = sl.natsConnection.Publish(subject, b)
 
 }
 
 // writeFile write buffer b to file f
 func (sl *SlogLogger) writeFile(f string, b []byte) {
-	if file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+	file, err := os.OpenFile(f, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err == nil {
 		_, _ = file.Write(b)
 		_ = file.Close()
 	}

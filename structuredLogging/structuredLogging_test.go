@@ -1,10 +1,12 @@
 package structuredLogging
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -154,6 +156,27 @@ func TestGenerateLogfileName(t *testing.T) {
 	if strings.Contains(fileName, "2006") {
 		t.Errorf("wrong filename %q", fileName)
 	}
+
+	logFilename := filepath.Join("/tmp", GenerateLogfileName("test-messenger-user.Current-2006-01.log"))
+	New(logFilename).Init()
+	slog.Info("just a test")
+	entries, _ := os.ReadDir("/tmp")
+	var found bool
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "test-messenger-") && strings.HasSuffix(e.Name(), ".log") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("generated file %q not found", logFilename)
+	}
+	content, _ := os.ReadFile(logFilename)
+	if !bytes.Contains(content, []byte("just a test")) {
+		t.Errorf("content of file %q is wrong", logFilename)
+	}
+	_ = os.Remove(logFilename)
+
 }
 
 func Test_StdOut(t *testing.T) {
