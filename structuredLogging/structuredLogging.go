@@ -3,7 +3,6 @@ package structuredLogging
 import (
 	"encoding/json"
 	"log/slog"
-	"math"
 	"os"
 	"os/user"
 	"strconv"
@@ -37,6 +36,7 @@ type SlogLogger struct {
 func New(dsn ...string) *SlogLogger {
 	var sl = SlogLogger{
 		writers: make(map[string]func(string, []byte)),
+		params:  make(keyvalue.Record),
 	}
 
 	for _, d := range dsn {
@@ -62,18 +62,26 @@ func New(dsn ...string) *SlogLogger {
 	return &sl
 }
 
-// Parameter sets structuredLogging parameters
+// Parameter sets structuredLogging parameters. Keys are converted to lowercase.
+// Key/value pairs implemented:
+//
+//	"level": "debug" ... which level to log. "debug" is default
+//	"level": "error"
+//	"level": "warning"
+//	"level": "info"
+//	"natsSubject": "string" ... alternative NATS subject
 //
 // Examples:
 //
-//		NatsSubjectPrefix ... defines the first level(s) of the nats subject, default: "slog."
-//		Level             ... defines the Log Level, default: "debug", keywords are not case sensitive
-//	                           "debug",-4,"-4"  ... debug Level
-//	                           "error",8,"8"    ... error Level
-//	                           "warning",4,"4"  ... warning Level
-//	                           "info,0,"0"      ... info Level
+//	  structuredLogging.New("STDERR").Parameter(
+//			map[string]interface{}{"level": "error"}).Init()
+//
+//	  structuredLogging.New("nats://localhost").Parameter(
+//			map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
 func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
-	sl.params = params
+	for k, v := range params {
+		sl.params[strings.ToLower(k)] = v
+	}
 	return sl
 }
 
@@ -87,7 +95,7 @@ func (sl *SlogLogger) Init() *SlogLogger {
 	}
 
 	var level slog.Level
-	switch strings.ToLower(sl.params.String("Level", true)) {
+	switch sl.params.String("level", true) {
 	case "debug", slog.LevelDebug.String():
 		level = slog.LevelDebug
 	case "error", slog.LevelError.String():
@@ -169,23 +177,30 @@ func (sl *SlogLogger) Write(p []byte) (int, error) {
 // nats reconnect documentation see
 // https://docs.nats.io/using-nats/developer/connecting/reconnect
 func (sl *SlogLogger) writeNats(dsn string, b []byte) {
-	if conn, err := nats.Connect(dsn, nats.RetryOnFailedConnect(true), nats.MaxReconnects(math.MaxInt)); err == nil {
+
+	conn, err := nats.Connect(dsn, nats.RetryOnFailedConnect(false),
+		nats.MaxReconnects(3))
+
+	if err != nil {
+		return
+	}
+
+	var subject string
+
+	if subject = sl.params.String("natssubject", true); subject == "" {
 		var x map[string]any
-		var subject string
-
 		_ = json.Unmarshal(b, &x)
-		if subject = sl.params.String("NatsSubjectPrefix", true); subject == "" {
-			subject = "slog."
-		}
-
+		subject = "slog."
 		if level, ok := x["level"].(string); ok {
 			subject += level
 		} else {
 			subject += "UNKNOWN"
 		}
-		_ = conn.Publish(subject, b)
-		conn.Close()
 	}
+
+	_ = conn.Publish(subject, b)
+	conn.Close()
+
 }
 
 // writeFile write buffer b to file f

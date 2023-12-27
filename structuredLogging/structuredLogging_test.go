@@ -1,13 +1,15 @@
 package structuredLogging
 
 import (
-	"github.com/itdesign-at/golib/keyvalue"
 	"log"
 	"log/slog"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/itdesign-at/golib/keyvalue"
 )
 
 func Test_Params(t *testing.T) {
@@ -162,4 +164,62 @@ func Test_StdOut(t *testing.T) {
 	slog.Warn("this is my first warning entry")
 	slog.Error("this is my first error entry")
 	slog.Debug("this is my first debug entry")
+}
+
+func Test_Nats(t *testing.T) {
+
+	var t0 time.Time
+
+	t0 = time.Now()
+	sl := New("nats://localhost").Init()
+	t.Log("NATS init: ", time.Now().Sub(t0).String())
+
+	_ = sl //only for debugging
+
+	t0 = time.Now()
+	log.Println("log.Println() is a info entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Info("this is my first info entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Warn("this is my first warning entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Error("this is my first error entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Debug("this is my first debug entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	withSubject := New("nats://localhost").Parameter(
+		map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
+	t.Log("NATS init: ", time.Now().Sub(t0).String())
+
+	_ = withSubject //only for debugging
+
+	t0 = time.Now()
+	log.Println("log.Println() is a info entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Info("this is my first info entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Warn("this is my first warning entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Error("this is my first error entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Debug("this is my first debug entry")
+	t.Log("NATS logging: ", time.Now().Sub(t0).String())
 }
