@@ -171,7 +171,7 @@ func Test_Nats(t *testing.T) {
 	var t0 time.Time
 
 	t0 = time.Now()
-	sl := New("nats://localhost").Init()
+	sl := New("nats://127.0.0.1").Init()
 	t.Log("NATS init: ", time.Now().Sub(t0).String())
 
 	_ = sl //only for debugging
@@ -197,7 +197,7 @@ func Test_Nats(t *testing.T) {
 	t.Log("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
-	withSubject := New("nats://localhost").Parameter(
+	withSubject := New("nats://127.0.0.1").Parameter(
 		map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
 	t.Log("NATS init: ", time.Now().Sub(t0).String())
 
