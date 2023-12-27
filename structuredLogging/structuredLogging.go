@@ -76,7 +76,7 @@ func New(dsn ...string) *SlogLogger {
 //	  structuredLogging.New("STDERR").Parameter(
 //			map[string]interface{}{"level": "error"}).Init()
 //
-//	  structuredLogging.New("nats://localhost").Parameter(
+//	  structuredLogging.New("nats://127.0.0.1").Parameter(
 //			map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
 func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
 	for k, v := range params {

@@ -1,6 +1,7 @@
 package structuredLogging
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -170,56 +171,58 @@ func Test_Nats(t *testing.T) {
 
 	var t0 time.Time
 
+	// Werner: ausnahmsweise mit fmt.Println die Zeiten raus schreiben,
+	// das das t.Log beim Testen umgeaendert wird.
 	t0 = time.Now()
 	sl := New("nats://127.0.0.1").Init()
-	t.Log("NATS init: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS init: ", time.Now().Sub(t0).String())
 
 	_ = sl //only for debugging
 
 	t0 = time.Now()
 	log.Println("log.Println() is a info entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Info("this is my first info entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Warn("this is my first warning entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Error("this is my first error entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Debug("this is my first debug entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	withSubject := New("nats://127.0.0.1").Parameter(
 		map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
-	t.Log("NATS init: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS init: ", time.Now().Sub(t0).String())
 
 	_ = withSubject //only for debugging
 
 	t0 = time.Now()
 	log.Println("log.Println() is a info entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Info("this is my first info entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Warn("this is my first warning entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Error("this is my first error entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 
 	t0 = time.Now()
 	slog.Debug("this is my first debug entry")
-	t.Log("NATS logging: ", time.Now().Sub(t0).String())
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 }
