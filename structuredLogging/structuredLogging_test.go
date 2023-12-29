@@ -249,3 +249,46 @@ func Test_Nats(t *testing.T) {
 	slog.Debug("this is my first debug entry")
 	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
 }
+
+func Test_PrepareNatsSubject(t *testing.T) {
+	sl := New("nats://127.0.0.1").Init()
+	var expected = map[string]string{
+		"":                   "slog.UNKNOWN",
+		"x":                  "slog.UNKNOWN",
+		"slog.UNKNOWN":       "slog.UNKNOWN",
+		`level ERROR`:        "slog.UNKNOWN",
+		`{"level": "ERROR"}`: "slog.ERROR", // valid JSON must work
+	}
+	for k, v := range expected {
+		subj := sl.prepareNatsSubject([]byte(k))
+		if subj != v {
+			t.Errorf("wrong subject - expected %q but got %q", v, subj)
+		}
+	}
+
+	var logMessage = []byte(`{"msg": "just to test","level": "DEBUG"}`)
+
+	expected = map[string]string{
+		"":                   "slog.DEBUG", // OK -> default subject
+		"mySubject.test":     "mySubject.test",
+		`{"level": "ERROR"}`: `{"level": "ERROR"}`,
+		"mySubject.LOGLEVEL": "mySubject.DEBUG", // OK -> custom subject
+		"LOGLEVEL.LOGLEVEL":  "DEBUG.DEBUG",     // OK -> custom subject
+	}
+
+	for sbjTemplate, v := range expected {
+		sl = New("nats://127.0.0.1").Parameter(map[string]interface{}{
+			"NatsSubject": sbjTemplate,
+		}).Init()
+		subj := sl.prepareNatsSubject(logMessage)
+		if subj != v {
+			t.Errorf("wrong subject - entered %q expected %q but got %q", sbjTemplate, v, subj)
+		}
+	}
+
+	sl = New("nats://127.0.0.1/mySubject.LOGLEVEL").Init()
+	subj := sl.prepareNatsSubject(logMessage)
+	if subj != "mySubject.DEBUG" {
+		t.Errorf("wrong subject expected mySubject.DEBUG derived from URL param, got %q", subj)
+	}
+}
