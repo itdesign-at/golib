@@ -251,7 +251,7 @@ func Test_Nats(t *testing.T) {
 }
 
 func Test_PrepareNatsSubject(t *testing.T) {
-	sl := New("nats://127.0.0.1").Init()
+	sl := New("nats://witest.itdesign.at").Init()
 	var expected = map[string]string{
 		"":                   "slog.UNKNOWN",
 		"x":                  "slog.UNKNOWN",
@@ -260,6 +260,7 @@ func Test_PrepareNatsSubject(t *testing.T) {
 		`{"level": "ERROR"}`: "slog.ERROR", // valid JSON must work
 	}
 	for k, v := range expected {
+		slog.Debug("Hallo Werner", "a", "b")
 		subj := sl.prepareNatsSubject([]byte(k))
 		if subj != v {
 			t.Errorf("wrong subject - expected %q but got %q", v, subj)
@@ -277,7 +278,7 @@ func Test_PrepareNatsSubject(t *testing.T) {
 	}
 
 	for sbjTemplate, v := range expected {
-		sl = New("nats://127.0.0.1").Parameter(map[string]interface{}{
+		sl = New("nats://witest.itdesign.at").Parameter(map[string]interface{}{
 			"NatsSubject": sbjTemplate,
 		}).Init()
 		subj := sl.prepareNatsSubject(logMessage)
@@ -291,4 +292,19 @@ func Test_PrepareNatsSubject(t *testing.T) {
 	if subj != "mySubject.DEBUG" {
 		t.Errorf("wrong subject expected mySubject.DEBUG derived from URL param, got %q", subj)
 	}
+}
+
+func Test_With(t *testing.T) {
+	f := "/tmp/structuredLogging_test_with.log"
+	handler := New(f).InitJsonHandler()
+	logger := slog.New(handler).With("node", "my.itdesign.at")
+	slog.SetDefault(logger)
+	slog.Debug("Hallo World")
+	content, err := os.ReadFile(f)
+	if err == nil && bytes.Contains(content, []byte("\"node\":\"my.itdesign.at\"")) {
+		t.Logf("Content OK")
+	} else {
+		t.Errorf("Wrong content")
+	}
+	_ = os.Remove(f)
 }

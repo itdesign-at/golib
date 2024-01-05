@@ -110,11 +110,16 @@ func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
 	return sl
 }
 
-// Init initialize the logger
-// In its simplest form structuredLogging.New().Init() logs to STDERR
-func (sl *SlogLogger) Init() *SlogLogger {
+// InitJsonHandler allows more flexibility during init phase.
+// See test file or this example here:
+//
+//		handler := structuredLogging.New("STDERR",
+//	   "nats://witest.itdesign.at/loggingTest.LEVEL").InitJsonHandler()
+//		logger := slog.New(handler).With("node", "my.itdesign.at")
+//		slog.SetDefault(logger)
+//		slog.Debug("Hallo World")
+func (sl *SlogLogger) InitJsonHandler() *slog.JSONHandler {
 
-	// if no writer is defined, it is ensured that logging occurs on stderr
 	if len(sl.writers) == 0 {
 		sl.writers["STDERR"] = sl.writeStdErr
 	}
@@ -139,10 +144,15 @@ func (sl *SlogLogger) Init() *SlogLogger {
 		ReplaceAttr: nil,
 	}
 
-	jh := slog.NewJSONHandler(sl, opt)
+	return slog.NewJSONHandler(sl, opt)
+}
+
+// Init initialize the logger
+// In its simplest form structuredLogging.New().Init() logs to STDERR
+func (sl *SlogLogger) Init() *SlogLogger {
+	jh := sl.InitJsonHandler()
 	logger := slog.New(jh)
 	slog.SetDefault(logger)
-
 	return sl
 }
 
