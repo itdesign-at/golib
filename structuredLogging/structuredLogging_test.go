@@ -296,7 +296,7 @@ func Test_PrepareNatsSubject(t *testing.T) {
 
 func Test_With(t *testing.T) {
 	f := "/tmp/structuredLogging_test_with.log"
-	handler := New(f).InitJsonHandler()
+	handler := New(f, "nats://witest.itdesign.at/scheduler.LOGLEVEL").InitJsonHandler()
 	logger := slog.New(handler).With("node", "my.itdesign.at")
 	slog.SetDefault(logger)
 	slog.Debug("Hallo World")

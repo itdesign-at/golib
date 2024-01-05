@@ -114,7 +114,7 @@ func (sl *SlogLogger) Parameter(params keyvalue.Record) *SlogLogger {
 // See test file or this example here:
 //
 //		handler := structuredLogging.New("STDERR",
-//	   "nats://witest.itdesign.at/loggingTest.LEVEL").InitJsonHandler()
+//	   "nats://witest.itdesign.at/scheduler.LOGLEVEL").InitJsonHandler()
 //		logger := slog.New(handler).With("node", "my.itdesign.at")
 //		slog.SetDefault(logger)
 //		slog.Debug("Hallo World")
