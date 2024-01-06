@@ -16,7 +16,6 @@ See [go module documentation](https://go.dev/doc/modules/managing-source) for mo
 |--------------------------------------------------------|---------------------------------------------------------------------|
 | func CheckRootUserAndExit()                            | CheckRootUserAndExit terminates the program when you are not "root" |
 | func Parse(args []string) keyvalue.Record              | Reads os.Args into the map returned                                 |
-| func Parse(args []string) keyvalue.Record              | Reads os.Args into the map returned                                 |
 | func PrintVersion(args keyvalue.Record, detailed bool) | Prints version info                                                 |
 
 # package converter
