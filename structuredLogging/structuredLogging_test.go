@@ -1,13 +1,18 @@
 package structuredLogging
 
 import (
-	"github.com/itdesign-at/golib/keyvalue"
+	"bytes"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/itdesign-at/golib/keyvalue"
 )
 
 func Test_Params(t *testing.T) {
@@ -151,6 +156,27 @@ func TestGenerateLogfileName(t *testing.T) {
 	if strings.Contains(fileName, "2006") {
 		t.Errorf("wrong filename %q", fileName)
 	}
+
+	logFilename := filepath.Join("/tmp", GenerateLogfileName("test-messenger-user.Current-2006-01.log"))
+	New(logFilename).Init()
+	slog.Info("just a test")
+	entries, _ := os.ReadDir("/tmp")
+	var found bool
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), "test-messenger-") && strings.HasSuffix(e.Name(), ".log") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("generated file %q not found", logFilename)
+	}
+	content, _ := os.ReadFile(logFilename)
+	if !bytes.Contains(content, []byte("just a test")) {
+		t.Errorf("content of file %q is wrong", logFilename)
+	}
+	_ = os.Remove(logFilename)
+
 }
 
 func Test_StdOut(t *testing.T) {
@@ -162,4 +188,123 @@ func Test_StdOut(t *testing.T) {
 	slog.Warn("this is my first warning entry")
 	slog.Error("this is my first error entry")
 	slog.Debug("this is my first debug entry")
+}
+
+func Test_Nats(t *testing.T) {
+
+	var t0 time.Time
+
+	// Werner: ausnahmsweise mit fmt.Println die Zeiten raus schreiben,
+	// das das t.Log beim Testen umgeaendert wird.
+	t0 = time.Now()
+	sl := New("nats://127.0.0.1").Init()
+	fmt.Println("NATS init: ", time.Now().Sub(t0).String())
+
+	_ = sl //only for debugging
+
+	t0 = time.Now()
+	log.Println("log.Println() is a info entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Info("this is my first info entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Warn("this is my first warning entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Error("this is my first error entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Debug("this is my first debug entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	withSubject := New("nats://127.0.0.1").Parameter(
+		map[string]interface{}{"natsSubject": "messages.watchit"}).Init()
+	fmt.Println("NATS init: ", time.Now().Sub(t0).String())
+
+	_ = withSubject //only for debugging
+
+	t0 = time.Now()
+	log.Println("log.Println() is a info entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Info("this is my first info entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Warn("this is my first warning entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Error("this is my first error entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+
+	t0 = time.Now()
+	slog.Debug("this is my first debug entry")
+	fmt.Println("NATS logging: ", time.Now().Sub(t0).String())
+}
+
+func Test_PrepareNatsSubject(t *testing.T) {
+	sl := New("nats://witest.itdesign.at").Init()
+	var expected = map[string]string{
+		"":                   "slog.UNKNOWN",
+		"x":                  "slog.UNKNOWN",
+		"slog.UNKNOWN":       "slog.UNKNOWN",
+		`level ERROR`:        "slog.UNKNOWN",
+		`{"level": "ERROR"}`: "slog.ERROR", // valid JSON must work
+	}
+	for k, v := range expected {
+		slog.Debug("Hallo Werner", "a", "b")
+		subj := sl.prepareNatsSubject([]byte(k))
+		if subj != v {
+			t.Errorf("wrong subject - expected %q but got %q", v, subj)
+		}
+	}
+
+	var logMessage = []byte(`{"msg": "just to test","level": "DEBUG"}`)
+
+	expected = map[string]string{
+		"":                   "slog.DEBUG", // OK -> default subject
+		"mySubject.test":     "mySubject.test",
+		`{"level": "ERROR"}`: `{"level": "ERROR"}`,
+		"mySubject.LOGLEVEL": "mySubject.DEBUG", // OK -> custom subject
+		"LOGLEVEL.LOGLEVEL":  "DEBUG.DEBUG",     // OK -> custom subject
+	}
+
+	for sbjTemplate, v := range expected {
+		sl = New("nats://witest.itdesign.at").Parameter(map[string]interface{}{
+			"NatsSubject": sbjTemplate,
+		}).Init()
+		subj := sl.prepareNatsSubject(logMessage)
+		if subj != v {
+			t.Errorf("wrong subject - entered %q expected %q but got %q", sbjTemplate, v, subj)
+		}
+	}
+
+	sl = New("nats://127.0.0.1/mySubject.LOGLEVEL").Init()
+	subj := sl.prepareNatsSubject(logMessage)
+	if subj != "mySubject.DEBUG" {
+		t.Errorf("wrong subject expected mySubject.DEBUG derived from URL param, got %q", subj)
+	}
+}
+
+func Test_With(t *testing.T) {
+	f := "/tmp/structuredLogging_test_with.log"
+	handler := New(f, "nats://witest.itdesign.at/scheduler.LOGLEVEL").InitJsonHandler()
+	logger := slog.New(handler).With("node", "my.itdesign.at")
+	slog.SetDefault(logger)
+	slog.Debug("Hallo World")
+	content, err := os.ReadFile(f)
+	if err == nil && bytes.Contains(content, []byte("\"node\":\"my.itdesign.at\"")) {
+		t.Logf("Content OK")
+	} else {
+		t.Errorf("Wrong content")
+	}
+	_ = os.Remove(f)
 }

@@ -1,13 +1,13 @@
-// Package encoding implements utility routines for decoding and encoding yaml and json files.
 package encoding
 
 import (
 	"encoding/gob"
 	"encoding/json"
 	"errors"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 var ErrExtensionUnsupported = errors.New("file extension not supported")
