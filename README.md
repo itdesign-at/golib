@@ -1,4 +1,5 @@
 # golib
+
 you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
 
     git tag -a commandLine/v1.0.0 -m "Release 1.0.0"
@@ -20,11 +21,25 @@ See [go module documentation](https://go.dev/doc/modules/managing-source) for mo
 
 # package converter
 
-| Function                                | Comment                                                   |
-|-----------------------------------------|-----------------------------------------------------------|
-| func Normalize(in string) string        | Normalize a string by removing all special characters     |
-| func Denormalize(in string) string      | Denormalize does the opposite of Normalize                |
-| func GetRandomString(length int) string | GetRandomString returns a random string with length given |
+| Function                                                    | Comment                                               |
+|-------------------------------------------------------------|-------------------------------------------------------|
+| func Denormalize(in string) string                          | Denormalize does the opposite of Normalize            |
+| func Normalize(in string) string                            | Normalize a string by removing all special characters |
+| func GetRandomString(length int) string                     | returns a random string with length given             |
+| func GetMobileNumber(input string) (string, error)          | extract the mobile number without blanks              |
+| func PrepareMobileNumber(input interface{}) (string, error) | PrepareMobileNumber returns 0043664....               |
+| func Fnv1aHash(input string) string                         | returns a 32 bit FNV-1a hash                          |
+| func B64Dec(b64s string) (string, error)                    | decode string in base64 format                        |
+| func B64MustDec(b64s string) string                         | decode string in base64 format, panics on error       |
+| func B64Enc(s string) string                                | encode string to base64 format                        |
+| func Dec(format string, src string, dst interface{}) error  | decode string in specific format                      |
+| func Enc(format string, src interface{}) (string, error)    | encode string to specific format                      |
+| func MustDec(format string, src string, dst interface{})    | decode string to specific format, panics on error     |
+| func MustEnc(format string, src interface{}) string         | encode string to specific format, panics on error     |
+| func JsonDec(src string, dst interface{}) error             | decode json in specific format                        |
+| func JsonEnc(src interface{}) (string, error)               | encode json to specific format                        |
+| func JsonMustDec(src string, dst interface{})               | decode json to specific format, panics on error       |
+| func JsonMustEnc(src interface{}) string                    | encode json to specific format, panics on error       |
 
 # package encoding
 
@@ -32,7 +47,6 @@ See [go module documentation](https://go.dev/doc/modules/managing-source) for mo
 |------------------------------------------------|------------------------------------|
 | func MarshalFile(file string, in any) error    | encode yaml, json or gob into file |
 | func UnmarshalFile(file string, out any) error | decode yaml, json or gob from file |
-
 
 # package keyvalue
 
@@ -59,3 +73,28 @@ See [go module documentation](https://go.dev/doc/modules/managing-source) for mo
 | func (sl *SlogLogger) Init() *SlogLogger                            | Init the logger with handler   |
 | func (sl *SlogLogger) Write(p []byte) (int, error)                  | Write to all log writers       |
 | func GenerateLogfileName(layout string) string                      | Get a logfilename              |                 
+
+# package crypt
+
+| Function                                                                  | Comment                                                     |
+|---------------------------------------------------------------------------|-------------------------------------------------------------|
+| func NewBcrypt() Bcrypt                                                   | creates an bcrypt handler                                   |
+| func (b *bcryptProperties) Encrypt(plainText string) (string, error)      | encrypt plaintext                                           |
+| func (b *bcryptProperties) HashedText(hashedText string)                  | set a hashed text string                                    |
+| func (b *bcryptProperties) PlainText(plainText string)                    | set a plain text string                                     |
+| func (b *bcryptProperties) Cost(cost int)                                 | sets bcrypt costs                                           |
+| func (b *bcryptProperties) Compare() bool                                 | checks the hash against the plaintext                       |                 
+| func GenerateEd25519KeyFiles(dir string, filename string) (string, error) | generates ed25519 key files (id_ed25519 and id_ed25519.pub) |                 
+| func NewEncryptedString(plainTextValue string) EncryptedString            | creates an Encrypted string                                 |                 
+| func NewDecryptedString(encryptedValue string) string                     | decrypt an encrypted string                                 |                 
+| func (v EncryptedString) Value() string                                   | returns the decrypted plainTextValue                        |                 
+| func (v EncryptedString) String() string                                  | returns the decrypted plainTextValue                        |                 
+| func (v EncryptedString) MarshalText() ([]byte, error)                    |                                                             |                 
+| func (v *EncryptedString) UnmarshalText(text []byte) error                |                                                             |                 
+| func (v EncryptedString) MarshalBinary() ([]byte, error)                  |                                                             |                 
+| func NewSymmetricEncryption() *SymCrypt                                   | creates an SymCrypt handler                                 |                 
+| func (s *SymCrypt) SetKey(key string) *SymCrypt                           | set an AES key                                              |                 
+| func (s *SymCrypt) SetPlainText(plainText string) *SymCrypt               | set plain text to encrypt.                                  |                 
+| func (s *SymCrypt) GetCypherBase64() string                               | returns the encrypted data stream as base64 encoded         |                 
+| func (s *SymCrypt) SetCypherBase64(base64String string) *SymCrypt         | set cipher text as base64 string.                           |                 
+| func (s *SymCrypt) GetPlainText() (string, error)                         | returns the plaintext                                       |                 
