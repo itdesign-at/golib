@@ -2,11 +2,13 @@
 
 you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
 
-    git tag -a commandLine/v1.0.0 -m "Release 1.0.0"
-    git tag -a converter/v1.0.0 -m "Release 1.0.0"
-    git tag -a encoding/v1.0.0 -m "Release 1.0.0"
-    git tag -a keyvalue/v1.0.0 -m "Release 1.0.0"
-    git tag -a structuredLogging/v1.0.0 -m "Release 1.0.0"
+    git tag -a commandLine/v1.0.1 -m "Release 1.0.1"
+    git tag -a converter/v1.0.3 -m "Release 1.0.3"
+    git tag -a crypt/v1.0.0 -m "Release 1.0.0"
+    git tag -a encoding/v1.0.1 -m "Release 1.0.1"
+    git tag -a keyvalue/v1.0.2 -m "Release 1.0.2"
+    git tag -a macro/v1.0.0 -m "Release 1.0.0"
+    git tag -a structuredLogging/v1.0.3 -m "Release 1.0.3"
     git push --tags
 
 See [go module documentation](https://go.dev/doc/modules/managing-source) for more information.
