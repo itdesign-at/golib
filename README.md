@@ -9,6 +9,11 @@ you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
     git tag -a keyvalue/v1.0.2 -m "Release 1.0.2"
     git tag -a macro/v1.0.0 -m "Release 1.0.0"
     git tag -a structuredLogging/v1.0.3 -m "Release 1.0.3"
+
+after you create a new tag for a specific package you also have to create a new tag for the whole library
+
+    git tag -a v1.0.2 -m "Release 1.0.2"
+    
     git push --tags
 
 See [go module documentation](https://go.dev/doc/modules/managing-source) for more information.
