@@ -1,5 +1,11 @@
 # golib
 
+first fetch all your tags and display all of them
+
+    git fetch --tags
+    git tag -l
+    ... output with list of tags ...
+    
 you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
 
     git tag -a commandLine/v1.0.1 -m "Release 1.0.1"
