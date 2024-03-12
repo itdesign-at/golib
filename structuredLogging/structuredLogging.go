@@ -121,7 +121,10 @@ func (sl *SlogLogger) InitJsonHandler() *slog.JSONHandler {
 	}
 
 	var level slog.Level
-	switch sl.params.String("level", true) {
+	var configuredValue = sl.params.String("level", true)
+
+	// new since 2024-03-12: compare configured level case-insensitive
+	switch strings.ToLower(configuredValue) {
 	case "debug", slog.LevelDebug.String():
 		level = slog.LevelDebug
 	case "error", slog.LevelError.String():
