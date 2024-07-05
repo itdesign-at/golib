@@ -1,4 +1,4 @@
-module github.com/itdesign-at/golib/senMlwriter
+module github.com/itdesign-at/golib/senMlWriter
 
 go 1.22.1
 
