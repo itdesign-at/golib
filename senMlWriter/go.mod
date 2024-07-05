@@ -1,4 +1,4 @@
-module github.com/itdesign-at/knorr-bremse/senMLwriter
+module ggithub.com/itdesign-at/golib/senMlwriter
 
 go 1.22.1
 
