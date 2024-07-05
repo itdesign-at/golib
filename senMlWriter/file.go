@@ -25,7 +25,7 @@ func (w *Writer) SenMl2File(fileNameTemplate string) (string, error) {
 	bn := ""
 	// replace now with the first record time
 	if len(w.p.Records) > 0 {
-		bt = time.UnixMicro(int64(w.p.Records[0].BaseTime) * 1000000)
+		bt = time.UnixMilli(int64(w.p.Records[0].BaseTime) * 1000)
 		bn = w.p.Records[0].BaseName
 	}
 

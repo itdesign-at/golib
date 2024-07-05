@@ -182,22 +182,24 @@ func (h *Handler) add(t time.Time, data keyvalue.Record, baseName string) senml.
 
 // scheduler writes the data to the configured Out every minute.
 // The scheduler is stopped by closing the stop channel.
-// The scheduler uses the waitUntilNext function to wait until the next full interval.
 // The data is written either every full second or minute (depending on the configuration).
 func (h *Handler) scheduler() {
 
 	interval := time.Second * time.Duration(h.config.FlushInterval)
-
-	//wait is the duration until the next full interval
 	wait := time.Until(time.Now().Truncate(interval).Add(interval))
 
-	ticker := time.NewTicker(wait)
+	timer := time.NewTimer(wait)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	defer timer.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-timer.C:
+			timer.Stop() // Stop the initial timer after first tick
 			ticker.Reset(interval)
+			h.Flush()
+		case <-ticker.C:
 			h.Flush()
 		case <-h.stop:
 			h.Flush()
