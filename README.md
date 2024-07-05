@@ -5,7 +5,7 @@ first fetch all your tags and display all of them
     git fetch --tags
     git tag -l
     ... output with list of tags ...
-    
+
 you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
 
     git tag -a commandLine/v1.0.1 -m "Release 1.0.1"
@@ -15,6 +15,7 @@ you have to prefix the tag with the folder name, e.g.: commandLine/v1.0.0
     git tag -a keyvalue/v1.0.2 -m "Release 1.0.2"
     git tag -a macro/v1.0.0 -m "Release 1.0.0"
     git tag -a structuredLogging/v1.0.3 -m "Release 1.0.3"
+    git tag -a senMlWriter/v1.0.0 -m "Release 1.0.0"
 
 after you create a new tag for a specific package you also have to create a new tag for the whole library
 
@@ -111,3 +112,19 @@ See [go module documentation](https://go.dev/doc/modules/managing-source) for mo
 | func (s *SymCrypt) GetCypherBase64() string                               | returns the encrypted data stream as base64 encoded         |                 
 | func (s *SymCrypt) SetCypherBase64(base64String string) *SymCrypt         | set cipher text as base64 string.                           |                 
 | func (s *SymCrypt) GetPlainText() (string, error)                         | returns the plaintext                                       |                 
+
+# package senMlWriter
+
+| Function                                                           | Comment                                                  |
+|--------------------------------------------------------------------|----------------------------------------------------------|
+| func New(Config) *Handler                                          | creates an senMl Pack handler                            |
+| func (h *Handler) Add(time.Time,map[string]any,...string) *Handler | add data to a senML Pack                                 |
+| func (b *Handler) Close() error                                    | Close handler and stop automatically writing senML Packs |
+| func (b *Handler) Flush() error                                    | write senML Pack to Out manualy                          |
+| func NewWriter(WriterConfig)                                       | creates a sebMP writer handler                           |
+| func (b *Writer) Write() error                                     | writes senML Pack to Out                                 |                 
+| func (b *Writer) AddPack() *Writer                                 | add senML to writer Handler                              |                 
+| func (b *Writer) SenMl2Syslog() error                              | send senML Pack to syslog                                |                 
+| func (b *Writer) SenMl2File(string) (string,error)                 | write senML Pack to file                                 |                 
+| func (b *Writer) SetPriority(syslog.Priority) *Writer              | set senML Priority                                       |                 
+| func (b *Writer) WriteToSyslog(string,string,[]byte) error         | send data to syslog Server                               |                 
