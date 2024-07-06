@@ -2,6 +2,8 @@ package senMlWriter
 
 import (
 	"errors"
+	"fmt"
+	"log/slog"
 	"log/syslog"
 	"strings"
 
@@ -27,6 +29,8 @@ type WriterConfig struct {
 	Out string `json:"out" yaml:"out"`
 
 	SyslogPriority syslog.Priority `json:"syslogPriority" yaml:"syslogPriority"`
+
+	debug bool
 }
 
 type Writer struct {
@@ -55,6 +59,9 @@ func NewWriter(cfg WriterConfig) *Writer {
 // The pack is written as is, no sorting is done.
 func (w *Writer) AddPack(p senml.Pack) *Writer {
 	w.p = p
+	if w.cfg.debug {
+		slog.Debug("senMlWriter AddPack", "records", p.Len())
+	}
 	return w
 }
 
@@ -62,18 +69,22 @@ func (w *Writer) AddPack(p senml.Pack) *Writer {
 // It returns an error if the writing fails.
 // The Out should be in the form of "file:/tmp/astrolab%02d.json" or "syslog://localhost:5514/tag".
 func (w *Writer) Write() error {
+	var err error
 	// w.cfg.Out examples:
 	// file:/tmp/astrolab%02d.json
 	// syslog://localhost:5514/tag
 	left, right, _ := strings.Cut(w.cfg.Out, ":")
 	switch left {
 	case "file":
-		_, err := w.SenMl2File(right)
-		return err
-
+		_, err = w.SenMl2File(right)
 	case "syslog":
 		connection := strings.TrimPrefix(right, "//")
-		return w.SenMl2Syslog(connection)
+		err = w.SenMl2Syslog(connection)
+	default:
+		err = ErrUnknownOut
 	}
-	return ErrUnknownOut
+	if w.cfg.debug {
+		slog.Debug("senMlWriter Write", "finished", "error", fmt.Sprintf("%v", err))
+	}
+	return err
 }

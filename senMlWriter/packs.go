@@ -1,6 +1,7 @@
 package senMlWriter
 
 import (
+	"log/slog"
 	"log/syslog"
 	"math"
 	"slices"
@@ -41,6 +42,8 @@ type Handler struct {
 	writtenMinute int
 	stop          chan struct{}
 	done          chan struct{}
+
+	debug bool
 }
 
 // New creates a new Sensorml handler with the given configuration.
@@ -61,6 +64,7 @@ func New(c Config) *Handler {
 		writtenMinute: -1,
 		stop:          make(chan struct{}),
 		done:          make(chan struct{}),
+		debug:         slog.Default().Enabled(nil, slog.LevelDebug),
 	}
 
 	go h.scheduler()
@@ -107,6 +111,7 @@ func (h *Handler) Flush() error {
 			BaseName:       bn,
 			Out:            h.config.Out,
 			SyslogPriority: h.config.SyslogPriority,
+			debug:          h.debug,
 		}
 
 		// if the writing fails, the data is kept in the handler
@@ -141,40 +146,43 @@ func (h *Handler) add(t time.Time, data keyvalue.Record, baseName string) senml.
 	firstValue := data.Float64(firstKey, true)
 
 	pack, ok := h.packs[baseName]
+
+	var add = func(r senml.Record) {
+		if h.debug {
+			slog.Debug("senMlWriter add", "record", r)
+		}
+		pack.Records = append(pack.Records, r)
+	}
+
 	// The first record contains the first key and a time stamp.
 	// If the device is not in the map, we have to set the base time.
 	// If the device is in the map, we have to calculate the time delta.
 	if !ok {
 		timeDelta = 0
-		pack.Records = append(pack.Records,
-			senml.Record{
-				BaseName: baseName,
-				BaseTime: round(float64(t.UnixMilli())/1000, h.config.TimePrecision),
-				Name:     firstKey,
-				Value:    &firstValue,
-			})
+		add(senml.Record{
+			BaseName: baseName,
+			BaseTime: round(float64(t.UnixMilli())/1000, h.config.TimePrecision),
+			Name:     firstKey,
+			Value:    &firstValue,
+		})
 	} else {
 		// round to x decimal place to reduce digits
 		timeDelta = round(float64(t.UnixMilli())/1000-pack.Records[0].BaseTime, h.config.TimePrecision)
-		pack.Records = append(pack.Records,
-			senml.Record{
-				Time:  timeDelta,
-				Name:  firstKey,
-				Value: &firstValue,
-			})
+		add(senml.Record{
+			Time:  timeDelta,
+			Name:  firstKey,
+			Value: &firstValue,
+		})
 	}
 
 	// add all other records, ignore first key
 	for _, key := range keys[1:] {
-
 		v := data.Float64(key)
-		r := senml.Record{
+		add(senml.Record{
 			Name:  key,
 			Value: &v,
 			Time:  timeDelta,
-		}
-
-		pack.Records = append(pack.Records, r)
+		})
 	}
 
 	return pack
@@ -196,13 +204,31 @@ func (h *Handler) scheduler() {
 	for {
 		select {
 		case <-timer.C:
-			timer.Stop() // Stop the initial timer after first tick
+			if h.debug {
+				slog.Debug("senMlWriter scheduler", "timer.C", "stop the initial timer after first tick")
+			}
+			timer.Stop()
 			ticker.Reset(interval)
-			h.Flush()
+			err := h.Flush()
+			if err != nil {
+				slog.Error("Error flushing data", "error", err.Error())
+			}
 		case <-ticker.C:
-			h.Flush()
+			if h.debug {
+				slog.Debug("senMlWriter scheduler", "ticker.C", "h.Flush()")
+			}
+			err := h.Flush()
+			if err != nil {
+				slog.Error("Error flushing data", "error", err.Error())
+			}
 		case <-h.stop:
-			h.Flush()
+			if h.debug {
+				slog.Debug("senMlWriter scheduler", "h.stop", "h.Flush()")
+			}
+			err := h.Flush()
+			if err != nil {
+				slog.Error("Error flushing data", "error", err.Error())
+			}
 			close(h.done)
 			return
 		}

@@ -1,6 +1,7 @@
 package senMlWriter
 
 import (
+	"log/slog"
 	"log/syslog"
 	"strings"
 
@@ -49,6 +50,11 @@ func (w *Writer) WriteToSyslog(connection, tag string, data []byte) error {
 		return err
 	}
 	defer writer.Close()
+
+	if w.cfg.debug {
+		slog.Debug("senMlWriter WriteToSyslog", "connection", connection,
+			"tag", tag, "bytes", len(data))
+	}
 
 	_, err = writer.Write(data)
 	return err
